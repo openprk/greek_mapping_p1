@@ -2,10 +2,8 @@
  * Main application JavaScript for Dealer Greeks Dashboard
  */
 
-// Use Vercel API route in production, localhost in development
-const API_BASE_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:8000' 
-  : '/api';
+// Backend URL - Render backend
+const API_BASE_URL = "https://greek-mapping-backend.onrender.com";
 
 let autoRefreshInterval = null;
 let gammaChart = null;
