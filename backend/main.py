@@ -8,7 +8,6 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 import math
 from decimal import Decimal
-from scipy.stats import norm
 import uvicorn
 
 from models import OptionContract, ChainResponse, StrikeRow, Totals, MMResponse
