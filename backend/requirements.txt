@@ -1,5 +1,5 @@
 fastapi==0.115.6
 uvicorn[standard]==0.30.6
-pydantic==2.8.2
+pydantic==2.5.3
 python-dateutil==2.9.0.post0
 python-multipart==0.0.6
