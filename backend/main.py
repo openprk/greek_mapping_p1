@@ -130,11 +130,8 @@ async def get_chain(
             mm_response=mm_response
         )
         
-        # Use model_dump() for Pydantic v2, fallback to dict() for v1
-        try:
-            return response.model_dump()
-        except AttributeError:
-            return response.dict()
+        # Pydantic v1 uses dict()
+        return response.dict()
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
