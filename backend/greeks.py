@@ -2,8 +2,18 @@
 Black-Scholes Greeks calculations
 """
 import math
-from scipy.stats import norm
 from typing import Dict
+
+# Pure Python normal distribution functions (no SciPy needed)
+INV_SQRT_2PI = 1.0 / math.sqrt(2.0 * math.pi)
+
+def norm_pdf(x: float) -> float:
+    """Standard normal probability density function"""
+    return INV_SQRT_2PI * math.exp(-0.5 * x * x)
+
+def norm_cdf(x: float) -> float:
+    """Standard normal cumulative distribution function"""
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
 
 def calculate_greeks(
@@ -46,12 +56,12 @@ def calculate_greeks(
     d1 = (math.log(S / K) + (r - q + 0.5 * sigma * sigma) * T) / (sigma * sqrt_T)
     d2 = d1 - sigma * sqrt_T
     
-    # Standard normal PDF and CDF
-    pdf_d1 = norm.pdf(d1)
-    cdf_d1 = norm.cdf(d1)
-    cdf_d2 = norm.cdf(d2)
-    cdf_neg_d1 = norm.cdf(-d1)
-    cdf_neg_d2 = norm.cdf(-d2)
+    # Standard normal PDF and CDF (pure Python)
+    pdf_d1 = norm_pdf(d1)
+    cdf_d1 = norm_cdf(d1)
+    cdf_d2 = norm_cdf(d2)
+    cdf_neg_d1 = norm_cdf(-d1)
+    cdf_neg_d2 = norm_cdf(-d2)
     
     # Delta
     if right.upper() == "C":
