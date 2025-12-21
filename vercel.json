@@ -1,10 +1,11 @@
 {
   "version": 2,
-  "builds": [],
+  "buildCommand": null,
+  "outputDirectory": "frontend",
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/frontend/$1"
+      "dest": "/$1"
     }
   ]
 }
