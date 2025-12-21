@@ -2,7 +2,10 @@
  * Main application JavaScript for Dealer Greeks Dashboard
  */
 
-const API_BASE_URL = 'http://localhost:8000';
+// Use Vercel API route in production, localhost in development
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:8000' 
+  : '/api';
 
 let autoRefreshInterval = null;
 let gammaChart = null;
