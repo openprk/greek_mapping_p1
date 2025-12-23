@@ -150,7 +150,8 @@ class TradierDataProvider(DataProvider):
     """Tradier API provider (requires API key)"""
     
     def __init__(self, api_key: Optional[str] = None, account_id: Optional[str] = None):
-        self.api_key = api_key or os.getenv("TRADIER_API_KEY")
+        # Support both TRADIER_API_KEY and TRADIER_TOKEN for compatibility
+        self.api_key = api_key or os.getenv("TRADIER_API_KEY") or os.getenv("TRADIER_TOKEN")
         self.account_id = account_id or os.getenv("TRADIER_ACCOUNT_ID")
         # Use production API if API key looks like production key, otherwise sandbox
         base_url_env = os.getenv("TRADIER_BASE_URL")
@@ -163,7 +164,7 @@ class TradierDataProvider(DataProvider):
     async def fetch_chain(self, symbol: str, expiry: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Fetch chain from Tradier API"""
         if not self.api_key:
-            raise ValueError("TRADIER_API_KEY not set. Please set TRADIER_API_KEY environment variable in Render.")
+            raise ValueError("TRADIER_API_KEY or TRADIER_TOKEN not set. Please set TRADIER_TOKEN environment variable in Render.")
         
         headers = {
             "Authorization": f"Bearer {self.api_key}",
