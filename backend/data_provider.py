@@ -179,17 +179,17 @@ class TradierDataProvider(DataProvider):
                 if quote_resp.status_code != 200:
                     raise ValueError(f"Tradier quote API error: {quote_resp.status_code}")
                 quote_data = quote_resp.json()
-                    
-                    if "quotes" not in quote_data or "quote" not in quote_data["quotes"]:
-                        raise ValueError(f"No quote data for {symbol}")
-                    
-                    quote = quote_data["quotes"]["quote"]
-                    if isinstance(quote, list):
-                        quote = quote[0]
-                    
-                    spot = float(quote.get("last", quote.get("close", 0)))
-                    if spot == 0:
-                        raise ValueError(f"Invalid spot price for {symbol}")
+                
+                if "quotes" not in quote_data or "quote" not in quote_data["quotes"]:
+                    raise ValueError(f"No quote data for {symbol}")
+                
+                quote = quote_data["quotes"]["quote"]
+                if isinstance(quote, list):
+                    quote = quote[0]
+                
+                spot = float(quote.get("last", quote.get("close", 0)))
+                if spot == 0:
+                    raise ValueError(f"Invalid spot price for {symbol}")
                 
                 # Get options expirations
                 expirations_url = f"{self.base_url}/markets/options/expirations"
@@ -197,22 +197,22 @@ class TradierDataProvider(DataProvider):
                 if exp_resp.status_code != 200:
                     raise ValueError(f"Tradier expirations API error: {exp_resp.status_code}")
                 exp_data = exp_resp.json()
-                    
-                    if "expirations" not in exp_data or "date" not in exp_data["expirations"]:
-                        raise ValueError(f"No expiration dates for {symbol}")
-                    
-                    expirations = exp_data["expirations"]["date"]
-                    if isinstance(expirations, str):
-                        expirations = [expirations]
-                    
-                    # Use provided expiry or nearest one
-                    if expiry:
-                        expiry_date_str = expiry
-                    else:
-                        expiry_date_str = expirations[0] if expirations else None
-                    
-                    if not expiry_date_str:
-                        raise ValueError(f"No valid expiration dates found for {symbol}")
+                
+                if "expirations" not in exp_data or "date" not in exp_data["expirations"]:
+                    raise ValueError(f"No expiration dates for {symbol}")
+                
+                expirations = exp_data["expirations"]["date"]
+                if isinstance(expirations, str):
+                    expirations = [expirations]
+                
+                # Use provided expiry or nearest one
+                if expiry:
+                    expiry_date_str = expiry
+                else:
+                    expiry_date_str = expirations[0] if expirations else None
+                
+                if not expiry_date_str:
+                    raise ValueError(f"No valid expiration dates found for {symbol}")
                 
                 # Get options chain for the expiration
                 chain_url = f"{self.base_url}/markets/options/chains"
@@ -225,15 +225,15 @@ class TradierDataProvider(DataProvider):
                 if chain_resp.status_code != 200:
                     raise ValueError(f"Tradier chain API error: {chain_resp.status_code}")
                 chain_data = chain_resp.json()
-                    
-                    if "options" not in chain_data or "option" not in chain_data["options"]:
-                        raise ValueError(f"No options data for {symbol} expiring {expiry_date_str}")
-                    
-                    options = chain_data["options"]["option"]
-                    if isinstance(options, dict):
-                        options = [options]
-                    elif not isinstance(options, list):
-                        options = []
+                
+                if "options" not in chain_data or "option" not in chain_data["options"]:
+                    raise ValueError(f"No options data for {symbol} expiring {expiry_date_str}")
+                
+                options = chain_data["options"]["option"]
+                if isinstance(options, dict):
+                    options = [options]
+                elif not isinstance(options, list):
+                    options = []
                 
                 # Transform Tradier format to our format
                 contracts = []
