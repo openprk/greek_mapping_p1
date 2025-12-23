@@ -4,6 +4,7 @@ Data models for the Dealer Greeks Dashboard
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from __future__ import annotations  # Enable postponed evaluation of annotations
 
 
 class OptionContract(BaseModel):
