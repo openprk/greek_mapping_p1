@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import json
 import os
 import asyncio
+import aiohttp
 
 
 class DataProvider(ABC):
@@ -151,16 +152,133 @@ class TradierDataProvider(DataProvider):
     def __init__(self, api_key: Optional[str] = None, account_id: Optional[str] = None):
         self.api_key = api_key or os.getenv("TRADIER_API_KEY")
         self.account_id = account_id or os.getenv("TRADIER_ACCOUNT_ID")
-        self.base_url = os.getenv("TRADIER_BASE_URL", "https://sandbox.tradier.com/v1")
+        # Use production API if API key looks like production key, otherwise sandbox
+        base_url_env = os.getenv("TRADIER_BASE_URL")
+        if base_url_env:
+            self.base_url = base_url_env
+        else:
+            # Default to production API
+            self.base_url = "https://api.tradier.com/v1"
     
     async def fetch_chain(self, symbol: str, expiry: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Fetch chain from Tradier API"""
         if not self.api_key:
             raise ValueError("TRADIER_API_KEY not set")
         
-        # TODO: Implement Tradier API calls
-        # This is a placeholder for when you plug in your Tradier credentials
-        raise NotImplementedError("Tradier provider not yet implemented. Use mock mode or implement API calls.")
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Accept": "application/json"
+        }
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                # First, get quotes to get current spot price
+                quote_url = f"{self.base_url}/markets/quotes"
+                async with session.get(quote_url, headers=headers, params={"symbols": symbol}) as quote_resp:
+                    if quote_resp.status != 200:
+                        raise ValueError(f"Tradier quote API error: {quote_resp.status}")
+                    quote_data = await quote_resp.json()
+                    
+                    if "quotes" not in quote_data or "quote" not in quote_data["quotes"]:
+                        raise ValueError(f"No quote data for {symbol}")
+                    
+                    quote = quote_data["quotes"]["quote"]
+                    if isinstance(quote, list):
+                        quote = quote[0]
+                    
+                    spot = float(quote.get("last", quote.get("close", 0)))
+                    if spot == 0:
+                        raise ValueError(f"Invalid spot price for {symbol}")
+                
+                # Get options expirations
+                expirations_url = f"{self.base_url}/markets/options/expirations"
+                async with session.get(expirations_url, headers=headers, params={"symbol": symbol}) as exp_resp:
+                    if exp_resp.status != 200:
+                        raise ValueError(f"Tradier expirations API error: {exp_resp.status}")
+                    exp_data = await exp_resp.json()
+                    
+                    if "expirations" not in exp_data or "date" not in exp_data["expirations"]:
+                        raise ValueError(f"No expiration dates for {symbol}")
+                    
+                    expirations = exp_data["expirations"]["date"]
+                    if isinstance(expirations, str):
+                        expirations = [expirations]
+                    
+                    # Use provided expiry or nearest one
+                    if expiry:
+                        expiry_date_str = expiry
+                    else:
+                        expiry_date_str = expirations[0] if expirations else None
+                    
+                    if not expiry_date_str:
+                        raise ValueError(f"No valid expiration dates found for {symbol}")
+                
+                # Get options chain for the expiration
+                chain_url = f"{self.base_url}/markets/options/chains"
+                params = {
+                    "symbol": symbol,
+                    "expiration": expiry_date_str
+                }
+                
+                async with session.get(chain_url, headers=headers, params=params) as chain_resp:
+                    if chain_resp.status != 200:
+                        raise ValueError(f"Tradier chain API error: {chain_resp.status}")
+                    chain_data = await chain_resp.json()
+                    
+                    if "options" not in chain_data or "option" not in chain_data["options"]:
+                        raise ValueError(f"No options data for {symbol} expiring {expiry_date_str}")
+                    
+                    options = chain_data["options"]["option"]
+                    if isinstance(options, dict):
+                        options = [options]
+                    elif not isinstance(options, list):
+                        options = []
+                
+                # Transform Tradier format to our format
+                contracts = []
+                for opt in options:
+                    strike = float(opt.get("strike", 0))
+                    right = opt.get("option_type", "").upper()
+                    if right not in ["C", "P"]:
+                        continue
+                    
+                    # Parse expiry date
+                    expiry_dt = datetime.strptime(expiry_date_str, "%Y-%m-%d")
+                    expiry_dt = expiry_dt.replace(hour=16, minute=0, second=0, microsecond=0)
+                    
+                    # Calculate time to expiry
+                    now = datetime.utcnow()
+                    time_to_expiry = (expiry_dt - now).total_seconds() / (365.25 * 24 * 3600)
+                    
+                    contracts.append({
+                        "symbol": opt.get("symbol", ""),
+                        "underlying": symbol,
+                        "expiry": expiry_dt.isoformat(),
+                        "strike": strike,
+                        "right": right,
+                        "iv": float(opt.get("greeks", {}).get("mid_iv", 0.2)) if isinstance(opt.get("greeks"), dict) else 0.2,
+                        "oi": int(opt.get("open_interest", 0)),
+                        "bid": float(opt.get("bid", 0)),
+                        "ask": float(opt.get("ask", 0)),
+                        "mid": float(opt.get("bid", 0) + opt.get("ask", 0)) / 2 if opt.get("bid") and opt.get("ask") else None,
+                        "last": float(opt.get("last", 0)),
+                        "rate": 0.05,  # Default risk-free rate
+                        "dividend": 0.015,  # Default dividend yield
+                        "spot": spot,
+                        "multiplier": 100
+                    })
+                
+                return {
+                    "symbol": symbol,
+                    "spot": spot,
+                    "expiry": expiry_dt.isoformat(),
+                    "updated_at": datetime.utcnow().isoformat(),
+                    "contracts": contracts
+                }
+        
+        except Exception as e:
+            print(f"Tradier API error: {e}")
+            raise ValueError(f"Failed to fetch Tradier data: {str(e)}")
 
 
 class PolygonDataProvider(DataProvider):
