@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import json
 import os
 import asyncio
-import aiohttp
+import httpx
 
 
 class DataProvider(ABC):
@@ -171,14 +171,14 @@ class TradierDataProvider(DataProvider):
         }
         
         try:
-            timeout = aiohttp.ClientTimeout(total=30)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
+            timeout = httpx.Timeout(30.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 # First, get quotes to get current spot price
                 quote_url = f"{self.base_url}/markets/quotes"
-                async with session.get(quote_url, headers=headers, params={"symbols": symbol}) as quote_resp:
-                    if quote_resp.status != 200:
-                        raise ValueError(f"Tradier quote API error: {quote_resp.status}")
-                    quote_data = await quote_resp.json()
+                quote_resp = await client.get(quote_url, headers=headers, params={"symbols": symbol})
+                if quote_resp.status_code != 200:
+                    raise ValueError(f"Tradier quote API error: {quote_resp.status_code}")
+                quote_data = quote_resp.json()
                     
                     if "quotes" not in quote_data or "quote" not in quote_data["quotes"]:
                         raise ValueError(f"No quote data for {symbol}")
@@ -193,10 +193,10 @@ class TradierDataProvider(DataProvider):
                 
                 # Get options expirations
                 expirations_url = f"{self.base_url}/markets/options/expirations"
-                async with session.get(expirations_url, headers=headers, params={"symbol": symbol}) as exp_resp:
-                    if exp_resp.status != 200:
-                        raise ValueError(f"Tradier expirations API error: {exp_resp.status}")
-                    exp_data = await exp_resp.json()
+                exp_resp = await client.get(expirations_url, headers=headers, params={"symbol": symbol})
+                if exp_resp.status_code != 200:
+                    raise ValueError(f"Tradier expirations API error: {exp_resp.status_code}")
+                exp_data = exp_resp.json()
                     
                     if "expirations" not in exp_data or "date" not in exp_data["expirations"]:
                         raise ValueError(f"No expiration dates for {symbol}")
@@ -221,10 +221,10 @@ class TradierDataProvider(DataProvider):
                     "expiration": expiry_date_str
                 }
                 
-                async with session.get(chain_url, headers=headers, params=params) as chain_resp:
-                    if chain_resp.status != 200:
-                        raise ValueError(f"Tradier chain API error: {chain_resp.status}")
-                    chain_data = await chain_resp.json()
+                chain_resp = await client.get(chain_url, headers=headers, params=params)
+                if chain_resp.status_code != 200:
+                    raise ValueError(f"Tradier chain API error: {chain_resp.status_code}")
+                chain_data = chain_resp.json()
                     
                     if "options" not in chain_data or "option" not in chain_data["options"]:
                         raise ValueError(f"No options data for {symbol} expiring {expiry_date_str}")
