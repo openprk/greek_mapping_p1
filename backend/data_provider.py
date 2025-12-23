@@ -163,7 +163,7 @@ class TradierDataProvider(DataProvider):
     async def fetch_chain(self, symbol: str, expiry: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Fetch chain from Tradier API"""
         if not self.api_key:
-            raise ValueError("TRADIER_API_KEY not set")
+            raise ValueError("TRADIER_API_KEY not set. Please set TRADIER_API_KEY environment variable in Render.")
         
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -171,7 +171,8 @@ class TradierDataProvider(DataProvider):
         }
         
         try:
-            async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 # First, get quotes to get current spot price
                 quote_url = f"{self.base_url}/markets/quotes"
                 async with session.get(quote_url, headers=headers, params={"symbols": symbol}) as quote_resp:
