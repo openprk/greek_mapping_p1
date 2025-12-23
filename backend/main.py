@@ -133,8 +133,16 @@ async def get_chain(
         # Pydantic v1 uses dict()
         return response.dict()
     
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Log the full error for debugging
+        import traceback
+        error_detail = str(e)
+        print(f"Error in get_chain: {error_detail}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Internal server error: {error_detail}")
 
 
 if __name__ == "__main__":
